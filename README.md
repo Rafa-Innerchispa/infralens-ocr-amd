@@ -117,6 +117,24 @@ OCR_BACKEND=stub python scripts/selfcheck.py
 python -m unittest discover -s tests -v
 ~~~
 
+
+## Field Scanner visual demo
+
+The grader contract remains minimal, but the repository also includes a judge-facing visual product demo:
+
+~~~bash
+python -m pip install -r demo/requirements.txt
+streamlit run demo/app.py
+~~~
+
+The demo has three modes:
+
+- **Challenge OCR** — plate/sign transcription with confidence.
+- **Asset Passport** — converts OCR into physical-infrastructure identity such as brand, model, serial, MAC/IP and electrical ratings.
+- **Batch Intake** — scans multiple equipment photos into a draft inventory table.
+
+This separation is intentional: presentation features cannot alter or break the strict AMD grader JSON.
+
 ## Claim boundaries
 
 This is an experimental AMD AI Academy project. It does not claim official AMD
