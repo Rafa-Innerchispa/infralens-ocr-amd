@@ -1,0 +1,11 @@
+.git
+.github
+tests
+scripts
+docs
+README.md
+*.log
+output
+models
+__pycache__
+*.pyc

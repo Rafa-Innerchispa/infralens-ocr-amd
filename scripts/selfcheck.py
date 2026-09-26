@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory() as td:
     ImageDraw.Draw(image).text((30, 65), "INFRALENS TEST", fill="black")
     image.save(src)
     proc = subprocess.run(
-        [sys.executable, str(root / "app" / "app.py"),
+        [sys.executable, str(root / "app/app.py"),
          "--input-image", str(src), "--output-dir", str(out)],
         env=env, capture_output=True, text=True,
     )
@@ -28,6 +28,7 @@ with tempfile.TemporaryDirectory() as td:
         raise SystemExit(proc.returncode)
     graded = json.loads((out / "device_output.json").read_text())
     assert set(graded) == {"text", "confidence"}, graded
+    assert graded["text"] == "INFRALENS TEST"
     assert (out / "device_asset_passport.json").exists()
-    assert (out / "device_annotated.jpg").exists()
+    assert (out / "device_preview.jpg").exists()
     print(json.dumps({"pass": True, "graded": graded}, indent=2))

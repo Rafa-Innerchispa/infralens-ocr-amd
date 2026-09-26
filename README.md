@@ -1,71 +1,84 @@
 # InfraLens OCR
 
-**AMD-powered visual asset intelligence for physical infrastructure.**
+AMD-powered visual asset intelligence for physical infrastructure, packaged for
+AMD AI Academy Mini Challenge 2.
 
-InfraLens OCR turns a field photo into two things:
+InfraLens has two layers:
 
-1. the exact Mini Challenge 2 OCR contract required by AMD's grader; and
-2. an optional Asset Passport that extracts operational identifiers such as brand, model, serial number, MAC address, IP address, voltage, current and power.
+1. Challenge OCR: a Qwen2.5-VL-3B resident model optimized for the public
+   Mini Challenge 2 rules: license plates, road signs, multi-line reading order,
+   Chinese plates, numeric advisory plaques and degraded imagery.
+2. Asset Passport: an optional deterministic extension that turns recognized
+   equipment text into candidate brand/model/serial/MAC/IP/electrical fields
+   for field-service inventory.
 
-The practical use case is field service: photograph an NVR, camera, access controller, switch, router, inverter, breaker label or equipment plate and convert it into machine-readable inventory for systems such as InnerOS / FieldOps.
+## Exact grader contract
 
-## AMD AI Academy Mini Challenge 2
-
-The grading contract is intentionally kept separate from the product extension.
-
-~~~bash
-python3 /app/app.py --input-image /app/input/device.jpg
-~~~
-
-Required output:
-
-~~~text
-/app/output/device_output.json
-~~~
-
-with exactly:
-
-~~~json
-{"text":"...","confidence":0.92}
-~~~
-
-InfraLens additionally writes:
-
-~~~text
-/app/output/device_asset_passport.json
-/app/output/device_annotated.jpg
-~~~
-
-Those extra artifacts are not required by the grader.
-
-## Architecture
-
-~~~text
-Field image
-   |
-   v
-lightweight CV line segmentation
-   |
-   v
-TrOCR model loaded once in a local daemon
-   |
-   +--> graded text + confidence JSON
-   |
-   +--> deterministic Asset Passport
-           brand / model / serial / MAC / IP / electrical values
-~~~
-
-The model runs with PyTorch on AMD ROCm. On ROCm, PyTorch exposes AMD GPUs through the familiar torch.cuda API.
-
-## Required AMD base
-
-The Dockerfile intentionally uses the exact Mini Challenge 2 base and must not be flattened or squashed:
+The Docker image keeps the mandatory base unchanged:
 
 ~~~dockerfile
 FROM rocm/pytorch:rocm10.0_ubuntu26.04_py3.14_pytorch_release_2.13.0
 ~~~
 
-The OCR model (microsoft/trocr-base-printed) is prefetched during the build so runtime startup is not dependent on Hugging Face network availability.
+The grader-facing command remains:
+
+~~~bash
+python3 /app/app.py --input-image /app/input/example.png
+~~~
+
+Default output:
+
+~~~text
+/app/output/example_output.json
+~~~
+
+The graded file contains exactly:
+
+~~~json
+{"text":"...","confidence":0.93}
+~~~
+
+InfraLens may additionally write an Asset Passport and preview. Those artifacts
+are separate and never change the required grader JSON.
+
+## Why a resident VLM
+
+The challenge has hard startup and per-image limits. The container entrypoint
+loads Qwen2.5-VL-3B once, warms it, and serves OCR requests locally. Each grader
+execution is a thin client, so the model is not reloaded for every image.
+
+A bounded three-variant pass handles common adverse conditions:
+original image, contrast-normalized image, and a sharpened/denoised variant.
+The time budget prevents extra passes from violating the per-image gate.
+
+## Challenge behavior
+
+Public rules encoded in the prompt and deterministic cleanup include:
+
+- US-style plates: registration only, excluding surrounding state/slogan/URL text.
+- Mainland Chinese plates: preserve province character and letter; normalize I/O
+  in the serial portion to 1/0.
+- Road signs: visible words/numbers in top-to-bottom reading order.
+- Numeric advisory plaques: number only when no unit is printed.
+- No labels, explanations or markdown in the final OCR text.
+
+For other technical labels, the prompt falls back to literal transcription so
+the same engine can power the Asset Passport use case.
+
+## Product extension: Asset Passport
+
+A field technician can photograph a camera, NVR, switch, router, access
+controller, inverter or equipment plate. InfraLens preserves the OCR text and
+extracts conservative candidate identifiers such as:
+
+- brand
+- model number
+- serial number
+- MAC address
+- IPv4 address
+- voltage/current/power ratings
+
+The intended future flow is human-confirmed ingestion into InnerOS / FieldOps.
 
 ## Build
 
@@ -73,7 +86,7 @@ The OCR model (microsoft/trocr-base-printed) is prefetched during the build so r
 docker build -t infralens-ocr-amd:mc2 .
 ~~~
 
-## Run on an AMD ROCm host
+## Run on AMD ROCm
 
 ~~~bash
 docker run -d --rm \
@@ -87,13 +100,16 @@ docker run -d --rm \
   infralens-ocr-amd:mc2
 ~~~
 
-Then execute one or more images without reloading the model:
+Then:
 
 ~~~bash
-docker exec infralens-ocr python3 /app/app.py --input-image /app/input/device.jpg
+docker exec infralens-ocr \
+  python3 /app/app.py --input-image /app/input/example.png
 ~~~
 
-## Local contract test without a model
+## Local contract tests
+
+The stub backend validates packaging without downloading the VLM:
 
 ~~~bash
 python -m pip install pillow
@@ -101,13 +117,9 @@ OCR_BACKEND=stub python scripts/selfcheck.py
 python -m unittest discover -s tests -v
 ~~~
 
-## Why this is more than a toy OCR demo
-
-Field technicians still type serial numbers, MAC addresses and equipment models manually. That is slow and error-prone. InfraLens treats OCR as an ingestion primitive for physical infrastructure: the challenge output remains simple and deterministic, while the product layer converts the same observation into a traceable asset record.
-
 ## Claim boundaries
 
-- This is an experimental AMD AI Academy project.
-- It does not claim official AMD endorsement.
-- The Asset Passport parser is deterministic and intentionally conservative.
-- OCR confidence reflects model inference, not a guarantee that every extracted identifier is correct.
+This is an experimental AMD AI Academy project. It does not claim official AMD
+endorsement. OCR confidence is model evidence, not a guarantee that every
+identifier is correct. Asset Passport values should be human-confirmed before
+changing operational inventory.

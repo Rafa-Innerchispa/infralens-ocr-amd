@@ -1,4 +1,4 @@
-# Lablab Submission Copy — Mini Challenge 2
+# Lablab Submission Copy - Mini Challenge 2
 
 ## Title
 
@@ -6,13 +6,28 @@ InfraLens OCR: Physical Assets to Data
 
 ## Long description
 
-InfraLens OCR turns photos of real infrastructure into machine-readable data on AMD ROCm. The Mini Challenge 2 core follows the grader contract exactly: a Docker container based on the mandated AMD ROCm/PyTorch image loads its OCR model once, accepts an input image through the required CLI, and writes a JSON result containing only the recognized text and confidence.
+InfraLens OCR is an AMD ROCm vision pipeline that satisfies the Mini Challenge
+2 OCR contract while extending it into something useful for real field
+operations. The challenge core runs Qwen2.5-VL-3B on PyTorch/ROCm inside the
+mandated AMD base image. The model is loaded and warmed once by a resident
+service, while each grader invocation remains a thin CLI that writes exactly
+the required text/confidence JSON.
 
-I extended that core into something I can use after the challenge. InfraLens can photograph an NVR, security camera, network switch, access-control panel, router, inverter, breaker label or equipment plate and create an additional Asset Passport. The passport deterministically extracts fields such as brand, model, serial number, MAC address, IP address and electrical ratings while preserving the original OCR text as evidence.
+The OCR engine is tuned for the public challenge rules: vehicle registration
+plates, Chinese plates, multi-line road signs, numeric advisory plaques and
+adverse images affected by blur, noise, low light or perspective. Bounded
+test-time augmentation compares an original, normalized and enhanced view
+without exceeding the per-image time budget. Deterministic cleanup removes
+surrounding plate banners and avoids invented units.
 
-The OCR path uses PyTorch on AMD ROCm with TrOCR and lightweight OpenCV preprocessing/line segmentation. Model weights are baked into the image so container startup does not depend on an external model download. A small local daemon loads the model once and serves repeated image requests within the challenge time budget.
+I then reuse that OCR result in an optional InfraLens Asset Passport. A
+technician can photograph an NVR, camera, network switch, access controller,
+router, inverter or equipment label and obtain candidate brand, model, serial
+number, MAC address, IP address and electrical ratings. The graded JSON remains
+untouched; Asset Passport is emitted separately.
 
-The project is designed as a reusable ingestion module for field-service and physical-infrastructure systems such as inventory, maintenance and AI-assisted building operations, rather than a one-off OCR screenshot.
+The goal is to turn OCR from a one-off demo into a reusable ingestion primitive
+for inventory, maintenance and AI-assisted physical infrastructure.
 
 ## Suggested categories
 
@@ -24,11 +39,11 @@ The project is designed as a reusable ingestion module for field-service and phy
 
 - AMD ROCm
 - PyTorch
+- Qwen2.5-VL
 - Hugging Face
-- OpenCV
 - Docker
-- TrOCR
+- Pillow
 
 ## One-line pitch
 
-Point a camera at physical infrastructure. Get trusted OCR plus a machine-readable Asset Passport.
+From difficult visual text to trusted OCR and machine-readable physical assets.
