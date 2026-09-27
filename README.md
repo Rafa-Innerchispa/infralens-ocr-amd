@@ -135,6 +135,14 @@ The demo has three modes:
 
 This separation is intentional: presentation features cannot alter or break the strict AMD grader JSON.
 
+## HyperLoom optimization lane
+
+InfraLens also includes an optional research lane that serves the same Qwen2.5-VL OCR workload through vLLM on AMD hardware and evaluates it using the evidence discipline developed in the HyperLoom R9700 work: cold vs warm latency, exact-output correctness, p50/p95 latency, throughput, VRAM and explicit runtime/backend fingerprints.
+
+This lane is intentionally separate from the grader container. HyperLoom may search for performance improvements, but a candidate is rejected if OCR correctness regresses.
+
+See [docs/HYPERLOOM_OPTIMIZATION_LANE.md](docs/HYPERLOOM_OPTIMIZATION_LANE.md).
+
 ## Claim boundaries
 
 This is an experimental AMD AI Academy project. It does not claim official AMD
