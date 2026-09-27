@@ -22,11 +22,17 @@ class ChallengeRuleTests(unittest.TestCase):
     def test_generation_complete_with_eos(self):
         self.assertTrue(generation_complete([10, 11, 2], 2, 3))
 
-    def test_generation_complete_under_budget_without_eos(self):
-        self.assertTrue(generation_complete([10, 11], 2, 3))
+    def test_generation_rejects_under_budget_without_eos(self):
+        self.assertFalse(generation_complete([10, 11], 2, 3))
 
     def test_generation_fails_closed_at_budget_without_eos(self):
         self.assertFalse(generation_complete([10, 11, 12], 2, 3))
+
+    def test_generation_rejects_missing_eos_configuration(self):
+        self.assertFalse(generation_complete([10, 11], None, 3))
+
+    def test_generation_rejects_empty_suffix(self):
+        self.assertFalse(generation_complete([], 2, 3))
 
 if __name__ == "__main__":
     unittest.main()
