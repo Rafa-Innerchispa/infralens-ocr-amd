@@ -83,18 +83,18 @@ def generation_complete(
     eos_token_id: int | list[int] | tuple[int, ...] | set[int] | None,
     max_new_tokens: int,
 ) -> bool:
-    """Fail closed only when generation exhausts its token budget without EOS."""
-    if not token_ids:
-        return True
+    """Require an explicit end-of-sequence token; ambiguous completion fails closed."""
+    if not token_ids or len(token_ids) > max_new_tokens:
+        return False
     if eos_token_id is None:
         eos_ids: set[int] = set()
     elif isinstance(eos_token_id, (list, tuple, set)):
         eos_ids = {int(value) for value in eos_token_id}
     else:
         eos_ids = {int(eos_token_id)}
-    if eos_ids and int(token_ids[-1]) in eos_ids:
-        return True
-    return len(token_ids) < max_new_tokens
+    if not eos_ids:
+        return False
+    return int(token_ids[-1]) in eos_ids
 
 class QwenOCREngine:
     name = "qwen2.5-vl-3b"
@@ -150,9 +150,14 @@ class QwenOCREngine:
 
         image = Image.new("RGB", (640, 320), "white")
         ImageDraw.Draw(image).text((180, 140), "STOP", fill="black")
-        self._generate(image)
+        self._generate(image, max_time_s=self.time_budget_s)
 
-    def _generate(self, image: Image.Image) -> tuple[str, float, bool]:
+    def _generate(
+        self,
+        image: Image.Image,
+        *,
+        max_time_s: float | None = None,
+    ) -> tuple[str, float, bool]:
         import torch
         from qwen_vl_utils import process_vision_info
 
@@ -181,14 +186,20 @@ class QwenOCREngine:
             return_tensors="pt",
         ).to(self.device)
 
+        generate_kwargs = {
+            "max_new_tokens": self.max_new_tokens,
+            "do_sample": False,
+            "num_beams": 1,
+            "return_dict_in_generate": True,
+            "output_scores": True,
+        }
+        if max_time_s is not None:
+            generate_kwargs["max_time"] = max(0.5, float(max_time_s))
+
         with torch.inference_mode():
             output = self.model.generate(
                 **inputs,
-                max_new_tokens=self.max_new_tokens,
-                do_sample=False,
-                num_beams=1,
-                return_dict_in_generate=True,
-                output_scores=True,
+                **generate_kwargs,
             )
 
         prompt_len = inputs["input_ids"].shape[1]
@@ -234,7 +245,13 @@ class QwenOCREngine:
                 if elapsed + average >= self.time_budget_s:
                     break
 
-            raw, probability, complete = self._generate(variant)
+            remaining = self.time_budget_s - elapsed
+            if remaining <= 0.5:
+                break
+            raw, probability, complete = self._generate(
+                variant,
+                max_time_s=remaining,
+            )
             candidates.append(
                 Candidate(
                     text=clean_text(raw),
