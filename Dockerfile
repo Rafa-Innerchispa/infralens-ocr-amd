@@ -3,6 +3,7 @@
 FROM rocm/pytorch:rocm10.0_ubuntu26.04_py3.14_pytorch_release_2.13.0
 
 ARG MODEL_ID=Qwen/Qwen2.5-VL-3B-Instruct
+ARG MODEL_REVISION=66285546d2b821cf421d4f5eb2576359d3770cd3
 
 LABEL org.opencontainers.image.title="InfraLens OCR"
 LABEL org.opencontainers.image.description="AMD ROCm OCR with an Asset Passport extension"
@@ -11,6 +12,7 @@ LABEL org.opencontainers.image.source="https://github.com/Rafa-Innerchispa/infra
 ENV PYTHONUNBUFFERED=1 \
     HF_HUB_DISABLE_TELEMETRY=1 \
     MODEL_ID=\${MODEL_ID} \
+    MODEL_REVISION=\${MODEL_REVISION} \
     MODEL_DIR=/models/Qwen2.5-VL-3B-Instruct \
     OCR_BACKEND=qwen \
     OCR_TTA_PASSES=3 \
