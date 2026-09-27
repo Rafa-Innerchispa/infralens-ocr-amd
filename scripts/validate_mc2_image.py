@@ -67,7 +67,12 @@ def main():
     p.add_argument("--image",required=True)
     p.add_argument("--images",required=True)
     p.add_argument("--report",default="mc2_acceptance_report.json")
+    p.add_argument("--expected-json",default="",help="optional filename -> exact normalized OCR text map")
     args=p.parse_args()
+
+    expected={}
+    if args.expected_json:
+        expected=json.loads(Path(args.expected_json).read_text(encoding="utf-8"))
 
     fixtures_dir=Path(args.images).resolve()
     fixtures=sorted(x for x in fixtures_dir.iterdir() if x.suffix.lower() in {".png",".jpg",".jpeg",".tif",".tiff",".webp"})
@@ -140,10 +145,16 @@ def main():
                         payload=validate_output(dest)
                         case["json_pass"]=True
                         case["result"]=payload
+                        wanted=expected.get(src.name)
+                        if wanted is not None:
+                            case["expected"]=wanted
+                            case["exact_pass"]=payload["text"]==wanted
+                        else:
+                            case["exact_pass"]=True
                     except Exception as exc:
                         case["json_pass"]=False
                         case["json_error"]=f"{type(exc).__name__}: {exc}"
-                    case["pass"]=call.returncode==0 and case["latency_pass"] and case["json_pass"]
+                    case["pass"]=call.returncode==0 and case["latency_pass"] and case["json_pass"] and case.get("exact_pass",False)
                 except subprocess.TimeoutExpired:
                     case={"file":src.name,"seconds":PER_IMAGE_LIMIT_S+5,"returncode":None,"latency_pass":False,"json_pass":False,"pass":False,"error":"timeout"}
                 report["cases"].append(case)
