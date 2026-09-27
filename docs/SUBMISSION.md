@@ -1,33 +1,18 @@
-# Lablab Submission Copy - Mini Challenge 2
+# Lablab Submission Copy — Mini Challenge 2
 
-## Title
+## Recommended public title
 
-InfraLens OCR: Physical Assets to Data
+ChispaVision: AMD Physical Asset Intelligence
+
+Repository name remains `infralens-ocr-amd`; the public submission title is intentionally distinct from other projects named InfraLens.
 
 ## Long description
 
-InfraLens OCR is an AMD ROCm vision pipeline that satisfies the Mini Challenge
-2 OCR contract while extending it into something useful for real field
-operations. The challenge core runs Qwen2.5-VL-3B on PyTorch/ROCm inside the
-mandated AMD base image. The model is loaded and warmed once by a resident
-service, while each grader invocation remains a thin CLI that writes exactly
-the required text/confidence JSON.
+ChispaVision is an AMD ROCm vision pipeline built for Mini Challenge 2 that treats OCR as the first step of a useful physical-world workflow. The grader-facing core uses a deterministic Qwen2.5-VL-3B pipeline inside the mandated ROCm/PyTorch container, with a resident model service so repeated CLI calls do not reload the model. It is hardened for vehicle plates, mainland Chinese plates, multi-line road signs, numeric advisory plaques, blur, JPEG degradation, low light and perspective while keeping the required output strictly limited to text and confidence.
 
-The OCR engine is tuned for the public challenge rules: vehicle registration
-plates, Chinese plates, multi-line road signs, numeric advisory plaques and
-adverse images affected by blur, noise, low light or perspective. Bounded
-test-time augmentation compares an original, normalized and enhanced view
-without exceeding the per-image time budget. Deterministic cleanup removes
-surrounding plate banners and avoids invented units.
+The same recognized text can optionally become an Asset Passport. A technician can photograph an NVR, camera, switch, access controller, router, inverter or equipment label and obtain structured candidate fields such as brand, model, serial number, MAC/IP information and electrical ratings. That product layer is isolated from the grader JSON.
 
-I then reuse that OCR result in an optional InfraLens Asset Passport. A
-technician can photograph an NVR, camera, network switch, access controller,
-router, inverter or equipment label and obtain candidate brand, model, serial
-number, MAC address, IP address and electrical ratings. The graded JSON remains
-untouched; Asset Passport is emitted separately.
-
-The goal is to turn OCR from a one-off demo into a reusable ingestion primitive
-for inventory, maintenance and AI-assisted physical infrastructure.
+The project also includes a separate HyperLoom optimization lane for the same multimodal workload on AMD hardware. HyperLoom candidates are accepted only when OCR correctness is preserved, turning the challenge into a real correctness-gated optimization workload rather than a one-off OCR demo.
 
 ## Suggested categories
 
@@ -43,7 +28,21 @@ for inventory, maintenance and AI-assisted physical infrastructure.
 - Hugging Face
 - Docker
 - Pillow
+- HyperLoom research lane
+- Radeon AI PRO R9700 validation
 
 ## One-line pitch
 
-From difficult visual text to trusted OCR and machine-readable physical assets.
+From difficult pixels to exact OCR, then from OCR to machine-readable physical assets on AMD.
+
+## Demo sequence
+
+1. Read a difficult challenge plate/sign.
+2. Show exact OCR + confidence + AMD runtime evidence.
+3. Scan a real infrastructure label and generate an Asset Passport.
+4. Show the HyperLoom optimization lane and correctness gate.
+5. Only show baseline-vs-optimized performance numbers when physical measurements exist.
+
+## Claim boundary
+
+Do not claim final R9700 latency, VRAM, image size, public-registry availability, or HyperLoom speedup until the physical acceptance report passes.
