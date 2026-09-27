@@ -1,6 +1,7 @@
-transformers>=4.57,<5
-accelerate>=1.10,<2
-pillow>=11
-huggingface-hub>=0.34,<1
-safetensors>=0.5
-qwen-vl-utils>=0.0.11
+transformers==4.57.1
+accelerate==1.10.1
+pillow==11.3.0
+huggingface-hub==0.35.3
+safetensors==0.6.2
+tokenizers==0.22.1
+qwen-vl-utils==0.0.14
