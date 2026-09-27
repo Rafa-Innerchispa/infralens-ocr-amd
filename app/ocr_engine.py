@@ -18,6 +18,7 @@ class Candidate:
     text: str
     probability: float
     variant: str
+    complete: bool
 
 class StubEngine:
     name = "stub"
@@ -77,6 +78,24 @@ def image_variants(image: Image.Image, count: int) -> list[tuple[str, Image.Imag
         out.append(("sharp", ImageEnhance.Sharpness(contrast).enhance(2.0)))
     return out[:count]
 
+def generation_complete(
+    token_ids: list[int],
+    eos_token_id: int | list[int] | tuple[int, ...] | set[int] | None,
+    max_new_tokens: int,
+) -> bool:
+    """Fail closed only when generation exhausts its token budget without EOS."""
+    if not token_ids:
+        return True
+    if eos_token_id is None:
+        eos_ids: set[int] = set()
+    elif isinstance(eos_token_id, (list, tuple, set)):
+        eos_ids = {int(value) for value in eos_token_id}
+    else:
+        eos_ids = {int(eos_token_id)}
+    if eos_ids and int(token_ids[-1]) in eos_ids:
+        return True
+    return len(token_ids) < max_new_tokens
+
 class QwenOCREngine:
     name = "qwen2.5-vl-3b"
 
@@ -122,7 +141,9 @@ class QwenOCREngine:
             1, min(3, int(os.environ.get("OCR_TTA_PASSES", "3")))
         )
         self.time_budget_s = float(os.environ.get("OCR_TIME_BUDGET_S", "20"))
-        self.max_new_tokens = int(os.environ.get("OCR_MAX_NEW_TOKENS", "40"))
+        self.max_new_tokens = max(
+            64, min(512, int(os.environ.get("OCR_MAX_NEW_TOKENS", "256")))
+        )
 
     def warmup(self) -> None:
         from PIL import ImageDraw
@@ -131,7 +152,7 @@ class QwenOCREngine:
         ImageDraw.Draw(image).text((180, 140), "STOP", fill="black")
         self._generate(image)
 
-    def _generate(self, image: Image.Image) -> tuple[str, float]:
+    def _generate(self, image: Image.Image) -> tuple[str, float, bool]:
         import torch
         from qwen_vl_utils import process_vision_info
 
@@ -172,6 +193,15 @@ class QwenOCREngine:
 
         prompt_len = inputs["input_ids"].shape[1]
         generated = output.sequences[0, prompt_len:]
+        token_ids = [int(value) for value in generated.tolist()]
+        eos_token_id = getattr(self.model.generation_config, "eos_token_id", None)
+        if eos_token_id is None and hasattr(self.processor, "tokenizer"):
+            eos_token_id = getattr(self.processor.tokenizer, "eos_token_id", None)
+        complete = generation_complete(
+            token_ids,
+            eos_token_id,
+            self.max_new_tokens,
+        )
         raw = self.processor.batch_decode(
             [generated],
             skip_special_tokens=True,
@@ -189,7 +219,7 @@ class QwenOCREngine:
         confidence = (
             sum(probabilities) / len(probabilities) if probabilities else 0.5
         )
-        return raw, float(max(0.0, min(1.0, confidence)))
+        return raw, float(max(0.0, min(1.0, confidence))), complete
 
     def read(self, image: Image.Image) -> tuple[str, float, dict[str, Any]]:
         started = time.monotonic()
@@ -204,12 +234,13 @@ class QwenOCREngine:
                 if elapsed + average >= self.time_budget_s:
                     break
 
-            raw, probability = self._generate(variant)
+            raw, probability, complete = self._generate(variant)
             candidates.append(
                 Candidate(
                     text=clean_text(raw),
                     probability=probability,
                     variant=name,
+                    complete=complete,
                 )
             )
 
@@ -221,8 +252,20 @@ class QwenOCREngine:
                 "variants": [],
             }
 
+        complete_candidates = [candidate for candidate in candidates if candidate.complete]
+        if not complete_candidates:
+            return "", 0.0, {
+                "passes": len(candidates),
+                "eligible_passes": 0,
+                "agreement": 0.0,
+                "generation_complete": False,
+                "truncated_passes": len(candidates),
+                "candidates": [c.text for c in candidates],
+                "variants": [c.variant for c in candidates],
+            }
+
         groups: dict[str, list[Candidate]] = {}
-        for candidate in candidates:
+        for candidate in complete_candidates:
             groups.setdefault(vote_key(candidate.text), []).append(candidate)
 
         def rank(group: list[Candidate]) -> tuple[int, float, int]:
@@ -237,7 +280,7 @@ class QwenOCREngine:
 
         best_group = max(groups.values(), key=rank)
         best = max(best_group, key=lambda c: c.probability)
-        agreement = len(best_group) / len(candidates)
+        agreement = len(best_group) / len(complete_candidates)
         mean_probability = (
             sum(c.probability for c in best_group) / len(best_group)
         )
@@ -248,8 +291,11 @@ class QwenOCREngine:
 
         return best.text, round(confidence, 4), {
             "passes": len(candidates),
+            "eligible_passes": len(complete_candidates),
             "agreement": round(agreement, 3),
             "elapsed_s": round(time.monotonic() - started, 3),
+            "generation_complete": True,
+            "truncated_passes": len(candidates) - len(complete_candidates),
             "candidates": [c.text for c in candidates],
             "variants": [c.variant for c in candidates],
         }
@@ -267,6 +313,9 @@ def runtime_metadata(engine: Any) -> dict[str, Any]:
     data = {
         "engine": engine.name,
         "device": getattr(engine, "device", "unknown"),
+        "model_id": getattr(engine, "model_id", None),
+        "max_new_tokens": getattr(engine, "max_new_tokens", None),
+        "tta_passes": getattr(engine, "tta_passes", None),
     }
     try:
         import torch
