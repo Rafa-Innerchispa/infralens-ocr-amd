@@ -10,12 +10,12 @@ LABEL org.opencontainers.image.source="https://github.com/Rafa-Innerchispa/infra
 
 ENV PYTHONUNBUFFERED=1 \
     HF_HUB_DISABLE_TELEMETRY=1 \
-    MODEL_ID=\${MODEL_ID} \
+    MODEL_ID=${MODEL_ID} \
     MODEL_DIR=/models/Qwen2.5-VL-3B-Instruct \
     OCR_BACKEND=qwen \
     OCR_TTA_PASSES=3 \
     OCR_TIME_BUDGET_S=20 \
-    OCR_MAX_NEW_TOKENS=40 \
+    OCR_MAX_NEW_TOKENS=512 \
     OCR_PORT=8765
 
 WORKDIR /app

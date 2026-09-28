@@ -18,6 +18,7 @@ class Candidate:
     text: str
     probability: float
     variant: str
+    truncated: bool = False
 
 class StubEngine:
     name = "stub"
@@ -32,6 +33,7 @@ class StubEngine:
             "agreement": 1.0,
             "candidates": ["INFRALENS TEST"],
             "variants": ["stub"],
+            "truncated": [False],
         }
 
 def prepare_image(image: Image.Image, max_side: int = 1280, min_side: int = 640) -> Image.Image:
@@ -122,7 +124,9 @@ class QwenOCREngine:
             1, min(3, int(os.environ.get("OCR_TTA_PASSES", "3")))
         )
         self.time_budget_s = float(os.environ.get("OCR_TIME_BUDGET_S", "20"))
-        self.max_new_tokens = int(os.environ.get("OCR_MAX_NEW_TOKENS", "40"))
+        # Challenge signs can contain substantially more text than a license plate.
+        # A high ceiling does not force long generation because decoding stops at EOS.
+        self.max_new_tokens = int(os.environ.get("OCR_MAX_NEW_TOKENS", "512"))
 
     def warmup(self) -> None:
         from PIL import ImageDraw
@@ -131,7 +135,7 @@ class QwenOCREngine:
         ImageDraw.Draw(image).text((180, 140), "STOP", fill="black")
         self._generate(image)
 
-    def _generate(self, image: Image.Image) -> tuple[str, float]:
+    def _generate(self, image: Image.Image) -> tuple[str, float, bool]:
         import torch
         from qwen_vl_utils import process_vision_info
 
@@ -178,6 +182,12 @@ class QwenOCREngine:
             clean_up_tokenization_spaces=False,
         )[0]
 
+        eos_id = getattr(self.processor.tokenizer, "eos_token_id", None)
+        last_token = int(generated[-1].item()) if len(generated) else None
+        truncated = len(generated) >= self.max_new_tokens and (
+            eos_id is None or last_token != int(eos_id)
+        )
+
         probabilities: list[float] = []
         try:
             for logits, token_id in zip(output.scores, generated.tolist()):
@@ -189,7 +199,9 @@ class QwenOCREngine:
         confidence = (
             sum(probabilities) / len(probabilities) if probabilities else 0.5
         )
-        return raw, float(max(0.0, min(1.0, confidence)))
+        if truncated:
+            confidence *= 0.5
+        return raw, float(max(0.0, min(1.0, confidence))), truncated
 
     def read(self, image: Image.Image) -> tuple[str, float, dict[str, Any]]:
         started = time.monotonic()
@@ -204,12 +216,13 @@ class QwenOCREngine:
                 if elapsed + average >= self.time_budget_s:
                     break
 
-            raw, probability = self._generate(variant)
+            raw, probability, truncated = self._generate(variant)
             candidates.append(
                 Candidate(
                     text=clean_text(raw),
                     probability=probability,
                     variant=name,
+                    truncated=truncated,
                 )
             )
 
@@ -219,24 +232,27 @@ class QwenOCREngine:
                 "agreement": 0.0,
                 "candidates": [],
                 "variants": [],
+                "truncated": [],
             }
 
         groups: dict[str, list[Candidate]] = {}
         for candidate in candidates:
             groups.setdefault(vote_key(candidate.text), []).append(candidate)
 
-        def rank(group: list[Candidate]) -> tuple[int, float, int]:
+        def rank(group: list[Candidate]) -> tuple[int, int, float, int]:
             mean_probability = (
                 sum(c.probability for c in group) / len(group)
             )
+            complete = sum(1 for c in group if not c.truncated)
             return (
+                complete,
                 len(group),
                 mean_probability,
                 1 if vote_key(group[0].text) else 0,
             )
 
         best_group = max(groups.values(), key=rank)
-        best = max(best_group, key=lambda c: c.probability)
+        best = max(best_group, key=lambda c: (not c.truncated, c.probability))
         agreement = len(best_group) / len(candidates)
         mean_probability = (
             sum(c.probability for c in best_group) / len(best_group)
@@ -252,6 +268,8 @@ class QwenOCREngine:
             "elapsed_s": round(time.monotonic() - started, 3),
             "candidates": [c.text for c in candidates],
             "variants": [c.variant for c in candidates],
+            "truncated": [c.truncated for c in candidates],
+            "selected_truncated": best.truncated,
         }
 
 _ENGINE: Any | None = None
