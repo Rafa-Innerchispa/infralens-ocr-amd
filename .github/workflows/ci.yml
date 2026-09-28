@@ -18,3 +18,9 @@ jobs:
       - run: OCR_BACKEND=stub python scripts/selfcheck.py
       - name: Verify mandated AMD base is unchanged
         run: grep -Fx 'FROM rocm/pytorch:rocm10.0_ubuntu26.04_py3.14_pytorch_release_2.13.0' Dockerfile
+      - name: Verify Docker build args expand
+        run: |
+          grep -F 'MODEL_ID=${MODEL_ID}' Dockerfile
+          grep -F 'MODEL_REVISION=${MODEL_REVISION}' Dockerfile
+          if grep -F 'MODEL_ID=\${MODEL_ID}' Dockerfile; then exit 1; fi
+          if grep -F 'MODEL_REVISION=\${MODEL_REVISION}' Dockerfile; then exit 1; fi
