@@ -1,5 +1,7 @@
 # Lablab Submission Copy — Mini Challenge 2
 
+Updated: 2026-09-28
+
 ## Recommended public title
 
 ChispaVision: AMD Physical Asset Intelligence
@@ -13,6 +15,8 @@ ChispaVision is an AMD ROCm vision pipeline built for Mini Challenge 2 that trea
 The same recognized text can optionally become an Asset Passport. A technician can photograph an NVR, camera, switch, access controller, router, inverter or equipment label and obtain structured candidate fields such as brand, model, serial number, MAC/IP information and electrical ratings. That product layer is isolated from the grader JSON.
 
 The project also includes a separate HyperLoom optimization lane for the same multimodal workload on AMD hardware. HyperLoom candidates are accepted only when OCR correctness is preserved, turning the challenge into a real correctness-gated optimization workload rather than a one-off OCR demo.
+
+Physical validation on an AMD Radeon AI PRO R9700 (`gfx1201`) passed the local acceptance corpus: 6/6 exact OCR fixtures, 50.340 s container startup, 1.687–4.072 s measured per-image latency, 17,829 MiB peak VRAM and a 24.673 GiB final image. Public-registry delivery remains a separate final gate and is not claimed complete until an anonymous pull is verified.
 
 ## Suggested categories
 
@@ -29,7 +33,7 @@ The project also includes a separate HyperLoom optimization lane for the same mu
 - Docker
 - Pillow
 - HyperLoom research lane
-- Radeon AI PRO R9700 validation
+- AMD Radeon AI PRO R9700
 
 ## One-line pitch
 
@@ -41,8 +45,8 @@ From difficult pixels to exact OCR, then from OCR to machine-readable physical a
 2. Show exact OCR + confidence + AMD runtime evidence.
 3. Scan a real infrastructure label and generate an Asset Passport.
 4. Show the HyperLoom optimization lane and correctness gate.
-5. Only show baseline-vs-optimized performance numbers when physical measurements exist.
+5. Show baseline-vs-optimized performance only when comparative physical measurements exist.
 
 ## Claim boundary
 
-Do not claim final R9700 latency, VRAM, image size, public-registry availability, or HyperLoom speedup until the physical acceptance report passes.
+Validated local R9700 measurements may be cited with the exact acceptance report. Do **not** claim public-registry availability, anonymous-pull validation, grader-private accuracy, or a HyperLoom speedup until those specific gates pass.
