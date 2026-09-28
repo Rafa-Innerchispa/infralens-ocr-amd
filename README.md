@@ -143,6 +143,21 @@ This lane is intentionally separate from the grader container. HyperLoom may sea
 
 See [docs/HYPERLOOM_OPTIMIZATION_LANE.md](docs/HYPERLOOM_OPTIMIZATION_LANE.md).
 
+## Validated Radeon AI PRO R9700 status
+
+The final challenge implementation has passed local physical acceptance on an AMD Radeon AI PRO R9700 (`gfx1201`):
+
+- exact OCR acceptance corpus: **6/6**
+- startup: **50.340 s**
+- measured per-image latency range: **1.687–4.072 s**
+- peak VRAM: **17,829 MiB**
+- image size: **24.673 GiB**
+- grader JSON contract: **PASS**
+
+See [docs/MC2_PHYSICAL_ACCEPTANCE_2026-09-28.md](docs/MC2_PHYSICAL_ACCEPTANCE_2026-09-28.md).
+
+The remaining delivery gate is publishing the exact image to a compatible public registry, validating an anonymous pull by digest, and rerunning the grader contract from that pulled artifact.
+
 ## Claim boundaries
 
 This is an experimental AMD AI Academy project. It does not claim official AMD
