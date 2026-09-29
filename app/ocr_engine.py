@@ -142,7 +142,7 @@ class QwenOCREngine:
         )
         self.time_budget_s = float(os.environ.get("OCR_TIME_BUDGET_S", "20"))
         self.max_new_tokens = max(
-            64, min(512, int(os.environ.get("OCR_MAX_NEW_TOKENS", "256")))
+            64, min(512, int(os.environ.get("OCR_MAX_NEW_TOKENS", "512")))
         )
 
     def warmup(self) -> None:

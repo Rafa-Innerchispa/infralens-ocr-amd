@@ -17,7 +17,7 @@ ENV PYTHONUNBUFFERED=1 \
     OCR_BACKEND=qwen \
     OCR_TTA_PASSES=3 \
     OCR_TIME_BUDGET_S=20 \
-    OCR_MAX_NEW_TOKENS=256 \
+    OCR_MAX_NEW_TOKENS=512 \
     OCR_PORT=8765
 
 WORKDIR /app
@@ -27,6 +27,9 @@ RUN python3 -m pip install --no-cache-dir -r /app/requirements.txt
 
 COPY app/download_model.py /app/download_model.py
 RUN python3 /app/download_model.py
+
+# Keep the expensive model-download layer cacheable; runtime challenge ceiling is 512.
+ENV OCR_MAX_NEW_TOKENS=512
 
 ENV HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1
