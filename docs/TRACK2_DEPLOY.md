@@ -7,6 +7,7 @@ Deploys ChispaVision / InfraLens as durable local services on **Rafa-Innerchispa
 | Item | Value |
 |------|-------|
 | Git branch | `mc2-track2-deploy-20260928` |
+| Deploy commit | `1d3df0a81cbb85950f37aca5946618ef8b37f91d` |
 | Host | `ralfiia-amd` (AMD node 1.5) |
 | LAN IP | `192.168.1.5` |
 | Tailscale IP | `100.72.153.124` |
