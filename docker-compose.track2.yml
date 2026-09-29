@@ -1,0 +1,34 @@
+# InfraLens Track 2 — persistent local services (AMD node 1.5).
+# Uses the validated competition image final-512 by reference only; never rebuilds it.
+name: infralens-track2
+
+services:
+  ocr-backend:
+    image: us-central1-docker.pkg.dev/innerops-agentic-platform/amd-academy-public/chispavision-mc2:final-512
+    container_name: infralens-track2-ocr
+    network_mode: host
+    ipc: host
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+    environment:
+      OCR_PORT: "${INFRALENS_OCR_PORT:-18765}"
+    restart: unless-stopped
+    pull_policy: never
+
+  streamlit-ui:
+    build:
+      context: ./demo
+      dockerfile: Dockerfile.ui
+    image: infralens-track2-ui:local
+    container_name: infralens-track2-ui
+    network_mode: host
+    environment:
+      INFRALENS_OCR_URL: "http://127.0.0.1:${INFRALENS_OCR_PORT:-18765}/ocr"
+      INFRALENS_UI_PORT: "${INFRALENS_UI_PORT:-18501}"
+    depends_on:
+      ocr-backend:
+        condition: service_started
+    restart: unless-stopped

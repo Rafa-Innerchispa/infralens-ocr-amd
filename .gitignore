@@ -6,3 +6,4 @@ output/
 models/
 *.log
 .DS_Store
+.env.track2
