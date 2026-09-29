@@ -2,88 +2,81 @@
 
 ## Verdict
 
-**NOT YET READY TO SUBMIT.**
+**TECHNICAL ACCEPTANCE PASSED — READY FOR CANONICAL INTEGRATION.**
 
-The implementation works physically on the Radeon AI PRO R9700, but the exact hardened reproducible artifact is still completing its final build/export and has not yet passed public-registry anonymous-pull validation.
+The exact hardened 512-token artifact built from source candidate `ee10e7f093bc1bc62e964ec8c177e47fd7b1a107` has now passed physical AMD R9700 validation, authenticated publication, anonymous pull, and a second physical run from the public registry reference.
+
+The only remaining lifecycle gate at this document revision is integrating the final branch into `main` without discarding the independent documentation commits that landed on `main` meanwhile.
 
 ## Canonical source
 
-Repository: `Rafa-Innerchispa/infralens-ocr-amd`
+- Repository: `Rafa-Innerchispa/infralens-ocr-amd`
+- Finalization branch: `chatgpt/mc2-final-512-20260928`
+- Candidate source SHA: `ee10e7f093bc1bc62e964ec8c177e47fd7b1a107`
+- Model: `Qwen/Qwen2.5-VL-3B-Instruct`
+- Model revision: `66285546d2b821cf421d4f5eb2576359d3770cd3`
+- Generation ceiling: `512`
+- Runtime base: `rocm/pytorch:rocm10.0_ubuntu26.04_py3.14_pytorch_release_2.13.0`
 
-Branch: `chatgpt/mc2-final-512-20260928`
+## Exact local artifact
 
-Candidate SHA: `ee10e7f093bc1bc62e964ec8c177e47fd7b1a107`
+- Local tag: `infralens-ocr-amd:mc2-final-ee10e7f`
+- Local image/index digest: `sha256:dbfcaf89fc2d47823406c1ceeefef464a98a7e4328226511ab1625c3d721868f`
+- Created: `2026-09-29T00:39:30.840903631Z`
+- Config confirms `OCR_MAX_NEW_TOKENS=512`
+- AMD GPU: Radeon AI PRO R9700, gfx1201
+- Resident model VRAM observed: approximately 8.9 GB per container
 
-## Mandated runtime base
+## Physical validation of exact local artifact
 
-`rocm/pytorch:rocm10.0_ubuntu26.04_py3.14_pytorch_release_2.13.0`
+| Fixture | Expected | Result | Warm latency |
+| --- | --- | --- | ---: |
+| US plate | `8ABC123` | `8ABC123` | 1.705 s |
+| Work sign | `ROAD WORK AHEAD` | `ROAD WORK AHEAD` | 1.868 s |
+| Advisory plaque | `35` | `35` | 1.354 s |
 
-Observed local base digest:
+All three returned rc=0.
 
-`sha256:3174cb7061d94c427da96c0edef4adea28046fa3f3b2ff3948dc4e995665ff8c`
+## Public registry acceptance
 
-## Model
+Public tag:
 
-`Qwen/Qwen2.5-VL-3B-Instruct`
+`us-central1-docker.pkg.dev/innerops-agentic-platform/amd-academy-public/chispavision-mc2:final-512`
 
-Pinned revision:
+Anonymous Docker pull with an empty Docker config succeeded.
 
-`66285546d2b821cf421d4f5eb2576359d3770cd3`
+The pulled public tag resolved to the exact final digest:
 
-Final generation ceiling:
+`sha256:dbfcaf89fc2d47823406c1ceeefef464a98a7e4328226511ab1625c3d721868f`
 
-`512` tokens.
+The pulled image config independently confirmed:
 
-## Why 512
+- `OCR_MAX_NEW_TOKENS=512`
+- model revision `66285546d2b821cf421d4f5eb2576359d3770cd3`
+- final build creation timestamp `2026-09-29T00:39:30.840903631Z`
 
-Long road signs can require more output budget than short license plates. The final branch combines the 512 ceiling with explicit EOS completion logic: a faster or shorter generation is not accepted merely because it emitted some plausible text.
+An older anonymous-pull helper was found to be hardcoded to the previous 256-token digest `sha256:971f1fd2873f157d1027327b15251d147b0896b5cce2c9bd94820d0ef9337e3e`. That stale helper was diagnosed and excluded from final acceptance. The verified `:final-512` tag is the canonical submission artifact.
 
-## Physical proof from previous 512 candidate
+## Physical validation from the public registry artifact
 
-- GPU: AMD Radeon AI PRO R9700
-- architecture: gfx1201
-- container healthy
-- GPU recognized by PyTorch/ROCm
-- VRAM used with resident OCR model: ~8.9 GB
-- US plate: PASS, 1.644 s
-- ROAD WORK AHEAD: PASS, 1.774 s
-- 35 advisory plaque: PASS, 1.303 s
+The public `:final-512` image was launched directly on the Radeon AI PRO R9700 and reached healthy state.
 
-## Exact reproducible rebuild
+| Fixture | Expected | Result | Warm latency |
+| --- | --- | --- | ---: |
+| US plate | `8ABC123` | `8ABC123` | 1.666 s |
+| Work sign | `ROAD WORK AHEAD` | `ROAD WORK AHEAD` | 1.721 s |
+| Advisory plaque | `35` | `35` | 1.307 s |
 
-Target local image:
+All three returned rc=0 and exact text.
 
-`infralens-ocr-amd:mc2-final-ee10e7f`
+## Registry authentication repair
 
-Build state at document creation:
+The AMD node already had a valid authenticated gcloud configuration, but Docker was not consuming it. A short-lived access token was obtained through the containerized Google Cloud CLI and passed directly to `docker login --password-stdin`; no token was printed or persisted in project documentation.
 
-- Python dependencies installed
-- exact pinned model downloaded
-- application copied
-- filesystem preparation completed
-- Docker exporting final layers
+## Remaining close gate
 
-The build is intentionally allowed to complete before any new GPU test begins.
-
-## Known registry state
-
-Registry repository:
-
-`us-central1-docker.pkg.dev/innerops-agentic-platform/amd-academy-public`
-
-A previous image exists there, but it is not the final 512/EOS artifact.
-
-An attempted push of the previous local 512 image failed with:
-
-`authentication failed`
-
-This is a delivery/authentication issue, not an OCR runtime failure.
-
-## Final delivery gate
-
-The submission's image field must remain unset until:
-
-- final exact image passes on physical R9700
-- exact image is pushed successfully
-- an anonymous client with empty Docker config can pull it
-- pulled digest is re-run successfully
+1. Reconcile the finalization branch with the five independent commits currently on `main`.
+2. Merge without force push and preserve both histories.
+3. Re-fetch and verify `origin/main` contains the exact hardened source.
+4. Mark this document READY TO SUBMIT on canonical `main`.
+5. Use only the verified `:final-512` public reference in the challenge submission.
