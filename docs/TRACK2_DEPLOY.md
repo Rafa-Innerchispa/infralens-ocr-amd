@@ -59,8 +59,9 @@ Ports `8765` / `8766` remain reserved for existing host services and are **not**
 - Public health currently returns HTTP `404` because the active cloudflared ingress does not yet contain the hostname mapping to `http://192.168.1.5:18501`.
 - OCR port `18765` remains private by design.
 - Do not expose `18765` publicly and do not rebuild the validated `final-512` image while fixing ingress.
-
-No public-Internet exposure is configured. Keep upstream router port-forward disabled for `18501`.
+- InnerOS recovery PR `Rafa-Innerchispa/innerops-agentic-platform#108` was merged as `9e7b86d2596f9012ca905b2e686e0d0ac26a662c` after targeted Recovery CI passed. It fixes the stale coordination-state API and adds a dry-run-by-default Cloudflare tunnel ingress upsert.
+- Production still needs to deploy/restart that InnerOS commit before the new MCP mutation is available. The required ingress remains exactly `infralens.creatorcore.ai -> http://192.168.1.5:18501`.
+- After deploy: apply the ingress, verify HTTPS 200/no `cf-mitigated: challenge`, re-check Streamlit health, OCR health, and the immutable `final-512` digest.
 
 ## Deploy
 
