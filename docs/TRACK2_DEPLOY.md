@@ -62,6 +62,7 @@ Ports `8765` / `8766` remain reserved for existing host services and are **not**
 - InnerOS recovery PR `Rafa-Innerchispa/innerops-agentic-platform#108` was merged as `9e7b86d2596f9012ca905b2e686e0d0ac26a662c` after targeted Recovery CI passed. It fixes the stale coordination-state API and adds a dry-run-by-default Cloudflare tunnel ingress upsert.
 - Production still needs to deploy/restart that InnerOS commit before the new MCP mutation is available. The required ingress remains exactly `infralens.creatorcore.ai -> http://192.168.1.5:18501`.
 - After deploy: apply the ingress, verify HTTPS 200/no `cf-mitigated: challenge`, re-check Streamlit health, OCR health, and the immutable `final-512` digest.
+- One-shot production recovery is now canonical in `Rafa-Innerchispa/innerops-agentic-platform` main commit `5eadd4e87e25566146aea66dfeb2dd4d2dd54eb7`: `scripts/deploy_infralens_publication_recovery.sh`. It performs runtime backup/compile/restart, ingress apply, public HTTPS verification, AMD UI/OCR checks, and immutable image verification.
 
 ## Deploy
 
