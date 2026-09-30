@@ -52,6 +52,14 @@ Ports `8765` / `8766` remain reserved for existing host services and are **not**
 
 `INFRALENS_OCR_URL` for the UI defaults to `http://127.0.0.1:18765/ocr`.
 
+### Public URL status
+
+- Intended public URL: `https://infralens.creatorcore.ai`
+- Cloudflare DNS CNAME was created on 2026-09-29 and points to tunnel `6fb8ceab-a17e-41b3-872d-e26ef2d1383f.cfargotunnel.com`.
+- Public health currently returns HTTP `404` because the active cloudflared ingress does not yet contain the hostname mapping to `http://192.168.1.5:18501`.
+- OCR port `18765` remains private by design.
+- Do not expose `18765` publicly and do not rebuild the validated `final-512` image while fixing ingress.
+
 No public-Internet exposure is configured. Keep upstream router port-forward disabled for `18501`.
 
 ## Deploy
