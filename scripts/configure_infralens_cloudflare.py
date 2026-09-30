@@ -33,7 +33,7 @@ def patch_config(text: str) -> str:
 
 
 def validate(config: pathlib.Path) -> None:
-    p = run("cloudflared", "tunnel", "ingress", "validate", "--config", str(config))
+    p = run("cloudflared", "tunnel", "--config", str(config), "ingress", "validate")
     if p.returncode != 0:
         raise RuntimeError(f"cloudflared ingress validation failed: {p.stderr.strip() or p.stdout.strip()}")
 
