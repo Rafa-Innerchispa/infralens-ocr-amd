@@ -35,6 +35,18 @@ class StubEngine:
             "variants": ["stub"],
         }
 
+    def analyze(self, _image: Image.Image, task: str = "general") -> tuple[dict[str, Any], dict[str, Any]]:
+        return {
+            "task": task,
+            "summary": "InfraLens stub visual analysis",
+            "object_type": "equipment",
+            "visible_text": ["INFRALENS TEST"],
+            "identifiers": [],
+            "observations": ["stub mode"],
+            "warnings": [],
+            "confidence": 1.0,
+        }, {"elapsed_s": 0.0, "generation_complete": True}
+
 def prepare_image(image: Image.Image, max_side: int = 1280, min_side: int = 640) -> Image.Image:
     image = ImageOps.exif_transpose(image).convert("RGB")
     w, h = image.size
@@ -232,6 +244,71 @@ class QwenOCREngine:
         )
         return raw, float(max(0.0, min(1.0, confidence))), complete
 
+    def analyze(
+        self,
+        image: Image.Image,
+        task: str = "general",
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """General visual analysis using the already-loaded Qwen2.5-VL model.
+
+        This presentation-side path is separate from the graded OCR read() path.
+        """
+        import torch
+        from qwen_vl_utils import process_vision_info
+
+        started = time.monotonic()
+        image = prepare_image(image)
+        system_prompt, user_prompt = prompt_for_task(task)
+        messages = [
+            {
+                "role": "system",
+                "content": [{"type": "text", "text": system_prompt}],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": image},
+                    {"type": "text", "text": user_prompt},
+                ],
+            },
+        ]
+        prompt = self.processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        image_inputs, video_inputs = process_vision_info(messages)
+        inputs = self.processor(
+            text=[prompt],
+            images=image_inputs,
+            videos=video_inputs,
+            padding=True,
+            return_tensors="pt",
+        ).to(self.device)
+
+        max_tokens = min(384, self.max_new_tokens)
+        with torch.inference_mode():
+            output = self.model.generate(
+                **inputs,
+                max_new_tokens=max_tokens,
+                do_sample=False,
+                num_beams=1,
+                return_dict_in_generate=True,
+                max_time=max(2.0, self.time_budget_s),
+            )
+
+        prompt_len = inputs["input_ids"].shape[1]
+        generated = output.sequences[0, prompt_len:]
+        raw = self.processor.batch_decode(
+            [generated],
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=False,
+        )[0]
+        analysis = normalize_analysis(raw, task)
+        return analysis, {
+            "elapsed_s": round(time.monotonic() - started, 3),
+            "generation_complete": True,
+            "raw_chars": len(raw),
+        }
+
     def read(self, image: Image.Image) -> tuple[str, float, dict[str, Any]]:
         started = time.monotonic()
         candidates: list[Candidate] = []
@@ -333,6 +410,7 @@ def runtime_metadata(engine: Any) -> dict[str, Any]:
         "model_id": getattr(engine, "model_id", None),
         "max_new_tokens": getattr(engine, "max_new_tokens", None),
         "tta_passes": getattr(engine, "tta_passes", None),
+        "capabilities": ["challenge_ocr", "visual_analysis", "asset_passport"],
     }
     try:
         import torch
