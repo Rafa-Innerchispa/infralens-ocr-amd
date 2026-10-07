@@ -12,15 +12,28 @@ The AMD grader uses the strict CLI/container contract. The visual demo is intent
 
 Current AMD 1.5 deployment:
 
-- Tailscale / remote: `http://100.72.153.124:18501`
+- **Judge/public URL:** `https://infralens.creatorcore.ai/`
+- Tailscale / operator access: `http://100.72.153.124:18501`
 - Home LAN: `http://192.168.1.5:18501`
 - Frontend: Streamlit `demo/app.py`
 - Frontend port: `18501`
-- Backend is local-only behind the frontend deployment and should not be exposed publicly.
+- OCR backend remains private behind the frontend and must not be exposed publicly.
 
-Use the Tailscale URL when reviewing the demo from outside the home LAN.
+Use the public HTTPS URL for Lablab/judge review. Use Tailscale only for operator troubleshooting.
 
-Last cross-host network validation recorded on 2026-10-06 confirmed the LAN and Tailscale frontend paths returned HTTP 200 after the AMD 1.5 route-overlap fix. Re-check live reachability before final submission if the host or Tailscale routing changes.
+### Live verification
+
+Verified on 2026-10-07 from the AMD/Cloudflare control path:
+
+- Cloudflare zone `creatorcore.ai`: credentials and DNS permissions available.
+- `https://infralens.creatorcore.ai/`: HTTP 200.
+- Response server: Cloudflare.
+- Application response: Streamlit HTML.
+- AMD frontend port `18501`: listening.
+- `infralens-track2-ui`: running.
+- `infralens-track2-ocr`: running and healthy.
+
+The immutable grader artifact remains separate from this presentation endpoint.
 
 ## Run
 
@@ -31,13 +44,13 @@ python -m pip install -r demo/requirements.txt
 streamlit run demo/app.py
 ```
 
-By default the UI calls:
+By default the repository demo calls:
 
 ```text
 http://127.0.0.1:8765/ocr
 ```
 
-Override with `INFRALENS_OCR_URL` if the resident service is exposed elsewhere.
+The deployed Track 2 stack overrides the backend target for the resident OCR service. Do not expose the OCR backend publicly.
 
 ## Judge story
 
@@ -49,19 +62,19 @@ difficult pixels -> exact OCR -> structured physical asset
 
 The first half satisfies Mini Challenge 2. The second half demonstrates why InfraLens is useful beyond the challenge.
 
-## Next session checkpoint
+## MC2 closeout checkpoint
 
 Do not reopen the frozen `final-512` challenge artifact.
 
-Next session starts here:
+Finish MC2 in this order:
 
-1. Open `http://100.72.153.124:18501` over Tailscale.
+1. Open `https://infralens.creatorcore.ai/` exactly as a judge would.
 2. Review the final visual polish only.
 3. Test one challenge OCR image.
 4. Test one real infrastructure/equipment label in Asset Passport mode.
 5. Test Batch Intake with multiple images.
 6. Capture final demo screenshots/video if the UI is approved.
-7. Confirm the Lablab MC2 submission state and submit/update only the presentation metadata if needed.
-8. Then move to Mini Challenge 3 RAG.
+7. Confirm the Lablab MC2 submission state and submit/update only presentation metadata if needed.
+8. Only after MC2 is closed, move to Mini Challenge 3.
 
 The grader artifact and its immutable digest remain frozen and must not be rebuilt as part of UI review.
