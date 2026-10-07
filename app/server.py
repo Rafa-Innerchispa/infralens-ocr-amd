@@ -31,26 +31,53 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self.send_json(200, {"ok": True, "runtime": RUNTIME})
+            self.send_json(200, {
+                "ok": True,
+                "runtime": RUNTIME,
+                "capabilities": ["challenge_ocr", "visual_analysis", "asset_passport"],
+            })
         else:
             self.send_json(404, {"error": "not_found"})
 
     def do_POST(self):
-        if self.path != "/ocr":
+        if self.path not in {"/ocr", "/analyze"}:
             self.send_json(404, {"error": "not_found"})
             return
         try:
             size = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(size)
             image = Image.open(io.BytesIO(raw)).convert("RGB")
-            text, confidence, info = ENGINE.read(image)
+
+            if self.path == "/ocr":
+                text, confidence, info = ENGINE.read(image)
+                self.send_json(200, {
+                    "text": text,
+                    "confidence": confidence,
+                    "info": info,
+                    "asset_passport": build_asset_passport(
+                        text, confidence, RUNTIME
+                    ),
+                    "runtime": RUNTIME,
+                })
+                return
+
+            task = self.headers.get("X-InfraLens-Task", "general")
+            analysis, info = ENGINE.analyze(image, task=task)
+            visible_text = "\n".join(analysis.get("visible_text") or [])
+            passport = build_asset_passport(
+                visible_text,
+                float(analysis.get("confidence", 0.0)),
+                RUNTIME,
+            )
+            if analysis.get("object_type") and analysis.get("object_type") != "unknown":
+                passport["asset_type"] = analysis["object_type"]
+            if analysis.get("brand"):
+                passport["brand"] = analysis["brand"]
             self.send_json(200, {
-                "text": text,
-                "confidence": confidence,
+                "analysis": analysis,
                 "info": info,
-                "asset_passport": build_asset_passport(
-                    text, confidence, RUNTIME
-                ),
+                "asset_passport": passport,
+                "runtime": RUNTIME,
             })
         except Exception as exc:
             self.send_json(500, {
