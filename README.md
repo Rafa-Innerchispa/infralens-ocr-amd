@@ -156,7 +156,13 @@ The final challenge implementation has passed local physical acceptance on an AM
 
 See [docs/MC2_PHYSICAL_ACCEPTANCE_2026-09-28.md](docs/MC2_PHYSICAL_ACCEPTANCE_2026-09-28.md).
 
-The remaining delivery gate is publishing the exact image to a compatible public registry, validating an anonymous pull by digest, and rerunning the grader contract from that pulled artifact.
+### Public Verified Artifact
+
+The verified public OCI container artifact is published to Google Artifact Registry and verified for anonymous evaluation:
+
+- **Image URI:** `us-central1-docker.pkg.dev/innerops-agentic-platform/amd-academy-public/chispavision-mc2:final-512`
+- **Digest:** `sha256:dbfcaf89fc2d47823406c1ceeefef464a98a7e4328226511ab1625c3d721868f`
+- **Canonical Umbrella Repository:** [https://github.com/Rafa-Innerchispa/inneros-amd-ai-league-2026](https://github.com/Rafa-Innerchispa/inneros-amd-ai-league-2026)
 
 ## Claim boundaries
 
