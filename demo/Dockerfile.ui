@@ -1,0 +1,15 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    INFRALENS_UI_PORT=18501
+
+WORKDIR /demo
+
+COPY requirements.txt /demo/requirements.txt
+RUN python3 -m pip install --no-cache-dir -r /demo/requirements.txt
+
+COPY app.py /demo/app.py
+COPY hero_bg.b64 /demo/hero_bg.b64
+
+CMD ["sh", "-c", "streamlit run app.py --server.address=0.0.0.0 --server.port=${INFRALENS_UI_PORT} --server.headless=true --browser.gatherUsageStats=false"]

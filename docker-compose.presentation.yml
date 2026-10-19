@@ -1,0 +1,37 @@
+# Judge-facing presentation stack.
+# The immutable final-512 image remains the base layer for the vision backend.
+name: infralens-track2-presentation
+
+services:
+  vision-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.presentation
+    image: infralens-track2-vision:local
+    container_name: infralens-track2-ocr
+    network_mode: host
+    ipc: host
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+    environment:
+      OCR_PORT: "18765"
+    restart: unless-stopped
+
+  streamlit-ui:
+    build:
+      context: ./demo
+      dockerfile: Dockerfile.ui
+    image: infralens-track2-ui:local
+    container_name: infralens-track2-ui
+    network_mode: host
+    environment:
+      INFRALENS_OCR_URL: "http://127.0.0.1:18765/ocr"
+      INFRALENS_ANALYZE_URL: "http://127.0.0.1:18765/analyze"
+      INFRALENS_UI_PORT: "18501"
+    depends_on:
+      vision-backend:
+        condition: service_started
+    restart: unless-stopped

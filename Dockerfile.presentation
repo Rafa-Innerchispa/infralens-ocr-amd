@@ -1,0 +1,15 @@
+# Presentation overlay only.
+# Reuses the immutable validated MC2 final-512 image and model weights.
+# It does NOT replace or mutate the published grader artifact.
+FROM us-central1-docker.pkg.dev/innerops-agentic-platform/amd-academy-public/chispavision-mc2:final-512
+
+LABEL org.opencontainers.image.title="InfraLens Judge Demo Vision"
+LABEL org.opencontainers.image.description="Presentation overlay with camera/general visual analysis on the validated MC2 stack"
+
+COPY app/server.py /app/server.py
+COPY app/ocr_engine.py /app/ocr_engine.py
+COPY app/visual_analysis.py /app/visual_analysis.py
+COPY app/asset_passport.py /app/asset_passport.py
+
+ENV OCR_PORT=18765
+ENTRYPOINT ["python3", "/app/server.py"]
